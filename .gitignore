@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Agent artifacts.
+browser_agent/agent/.adk/session.db

@@ -1,0 +1,38 @@
+name: CI Build
+run-name: ${{ github.actor }} is testing out by GitHub Actions 🚀
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Update pip
+        run: pip install --upgrade pip
+
+      - name: Install dependencies
+        run: make init_test
+
+      - name: Lint with ruff
+        run: make lint
+
+      - name: Test with pytest
+        run: make test
+
+      - name: Show status
+        run: echo "This job's status is ${{ job.status }}."
