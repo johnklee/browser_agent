@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS amazon_rank_data (
 3. **Execute the Query**:
    Run the helper script `query_rank.py` using `run_command`:
    ```bash
-   python3 .agents/skills/query_rank_info/query_rank.py --sql "<SQL_QUERY>"
+   python3 .agent/skills/query_rank_info/query_rank.py --sql "<SQL_QUERY>"
    ```
    If a custom DB path is requested, provide `--db-path <PATH>`.
    To output JSON format, add `--format json`.
