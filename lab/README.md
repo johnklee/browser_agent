@@ -59,6 +59,46 @@ Category mappings are defined in [`constants.py`](constants.py):
 
 ---
 
+## Prerequisites & Environment Setup
+
+To ensure the runtime environment has all necessary dependencies (e.g., `requests`, `beautifulsoup4`, `lxml`, `tqdm`), create and activate a virtual environment using `uv`:
+
+### 1. Create and Activate Virtual Environment
+
+From the project root:
+
+```bash
+# Create a virtual environment with uv
+uv venv
+
+# Activate the virtual environment
+# On Linux / macOS:
+source .venv/bin/activate
+
+# On Windows:
+# .venv\Scripts\activate
+```
+
+### 2. Install Project Dependencies
+
+Synchronize all required dependencies into the virtual environment:
+
+```bash
+# Sync dependencies from pyproject.toml / uv.lock
+uv sync
+
+# Or install from requirements.txt
+uv pip install -r requirements.txt
+```
+
+> [!TIP]
+> **Direct Execution via `uv run`**: You can also run the script directly without manually activating the virtual environment by prefixing the command with `uv run`:
+> ```bash
+> uv run python lab/parse_amazon_top_n.py --category kitchen --top-n 10
+> ```
+
+---
+
 ## Usage Examples
 
 Make sure your working directory is `lab/` (or adjust relative paths accordingly):
