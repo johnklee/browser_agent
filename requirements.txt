@@ -398,6 +398,8 @@ tornado==6.5.8
     #   jupyterlab
     #   notebook
     #   terminado
+tqdm==4.70.0
+    # via browser-agent (pyproject.toml)
 traitlets==5.16.1
     # via
     #   ipykernel

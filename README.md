@@ -112,6 +112,145 @@ adk api_server browser_agent --port 8888
 
 ---
 
+## 4. Setup and use Browser MCP
+
+This section details how to install and configure Browser MCP, configure Antigravity (`agy`), and debug browser automation via Chrome DevTools Protocol (CDP).
+
+### 1. Install `@browsermcp/mcp`
+
+Install the Browser MCP package globally using `npm`:
+
+```bash
+npm install -g @browsermcp/mcp
+```
+
+Verify that the module is installed:
+
+```bash
+node /usr/lib/node_modules/@browsermcp/mcp/dist/index.js --help
+```
+
+---
+
+### 2. Configure Antigravity MCP (`mcp_config.json`)
+
+Configure Antigravity to recognize the Browser MCP server. Add the server entry into `~/.gemini/antigravity-cli/mcp_config.json` (and `~/.gemini/config/mcp_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "browsermcp": {
+      "command": "node",
+      "args": [
+        "/usr/lib/node_modules/@browsermcp/mcp/dist/index.js"
+      ]
+    }
+  }
+}
+```
+
+---
+
+### 3. Launch Google Chrome with Remote Debugging
+
+Google Chrome must be launched with remote debugging enabled. Chrome requires a distinct `--user-data-dir` flag when remote debugging is enabled.
+
+1. **Stop existing Chrome processes:**
+   ```bash
+   killall -u $USER chrome google-chrome google-chrome-stable 2>/dev/null || true
+   ```
+
+2. **Create user data directory:**
+   ```bash
+   mkdir -p ~/.config/google-chrome-remote
+   ```
+
+3. **Launch Chrome with remote debugging on port `9222`:**
+   ```bash
+   google-chrome \
+     --ozone-platform=wayland \
+     --remote-debugging-port=9222 \
+     --remote-allow-origins="*" \
+     --user-data-dir=$HOME/.config/google-chrome-remote \
+     --no-first-run \
+     --no-default-browser-check &
+   ```
+
+---
+
+### 4. Configure `DevToolsActivePort`
+
+Antigravity and Chrome DevTools clients look for `DevToolsActivePort` inside the default Chrome profile path (`~/.config/google-chrome/DevToolsActivePort`).
+
+1. **Query the active WebSocket debugger URL:**
+   ```bash
+   curl -s http://127.0.0.1:9222/json/version
+   ```
+
+2. **Generate `DevToolsActivePort` with the port and browser path:**
+   ```bash
+   # Extract websocket path from /json/version or format directly:
+   WS_PATH=$(curl -s http://127.0.0.1:9222/json/version | grep -oP '"webSocketDebuggerUrl":\s*"ws://127.0.0.1:9222\K[^"]*')
+   printf "9222\n${WS_PATH}\n" > ~/.config/google-chrome/DevToolsActivePort
+   ```
+
+---
+
+### 5. Debug and Verify Browser Automation
+
+To verify that the browser is accessible and operational for `agy` and browser automation tools:
+
+1. **Check the remote debugging endpoint:**
+   ```bash
+   curl -s http://127.0.0.1:9222/json/version
+   ```
+
+2. **Verify CDP connection via Playwright:**
+   ```bash
+   uv run python -c "
+   import asyncio
+   from playwright.async_api import async_playwright
+
+   async def check():
+       async with async_playwright() as p:
+           browser = await p.chromium.connect_over_cdp('http://127.0.0.1:9222')
+           context = browser.contexts[0]
+           page = context.pages[0] if context.pages else await context.new_page()
+           print('Connected to browser! Current page title:', await page.title())
+
+   asyncio.run(check())
+   "
+   ```
+
+3. **Run with `agy`:**
+   In Antigravity chat, use the `/browser` slash command to delegate web navigation tasks:
+   ```text
+   /browser open https://www.amazon.com/gp/new-releases/fashion/
+   ```
+
+---
+
+### 6. FAQ & Troubleshooting
+
+#### Q: How to fix "When attempting to interact via BrowserMCP, the extension reported that no active browser tab was attached"?
+
+**Error Message:**
+```text
+Error: No connection to browser extension. In order to proceed, you must first connect a tab by clicking the Browser MCP extension icon in the browser toolbar and clicking the 'Connect' button.
+```
+
+**Cause:**
+Browser MCP communicates with your browser via the Browser MCP companion extension. When attempting to run browser actions without an active tab bound to the MCP server, the extension will report that no tab is connected.
+
+**Debugging & Solution Steps:**
+1. **Open the Target Webpage**: Open Google Chrome and navigate to the desired URL (e.g., `https://www.amazon.com/gp/new-releases/coins/`).
+2. **Open Extension Popup**: Click the **Browser MCP** extension icon located in the Chrome extension toolbar.
+3. **Connect the Active Tab**: Click the **Connect** button in the popup to attach Browser MCP to the current tab.
+4. **Keep the Tab Active**: Ensure the tab stays open while `agy` or Browser MCP performs commands.
+5. **Check Remote Debugging / CDP (Alternative)**: If using remote debugging instead of the toolbar extension, verify that Chrome is running on port `9222` (`curl -s http://127.0.0.1:9222/json/version`) and `~/.config/google-chrome/DevToolsActivePort` is configured properly as outlined in [Step 4](#4-configure-devtoolsactiveport).
+
+---
+
 # Tech Stack
 
 - Python 3.12+
@@ -120,3 +259,4 @@ adk api_server browser_agent --port 8888
 - Playwright
 - BeautifulSoup4 / lxml
 - Pandas
+

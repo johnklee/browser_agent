@@ -11,14 +11,18 @@ import csv
 import logging
 import re
 from datetime import UTC, datetime
+from pathlib import Path
 
 import requests
 from bs4 import BeautifulSoup
 from constants import (
   DEFAULT_USER_AGENT,
+  AmazonProductCategories,
   AmazonProductCategoryByName,
+  ProductCategory,
 )
 from db_sqlite_op import upsert_rank_data
+from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -64,9 +68,12 @@ def parse_amazon_new_releases(
     asin = "N/A"
     clean_url = "N/A"
 
-    # Check parent container data-asin
+    # Check container data-asin
     asin_elem = item.select_one("[data-asin]")
-    if asin_elem and asin_elem.get("data-asin"):
+    if item.get("data-asin"):
+      asin = item["data-asin"]
+      clean_url = f"https://www.amazon.com/dp/{asin}"
+    elif asin_elem and asin_elem.get("data-asin"):
       asin = asin_elem["data-asin"]
       clean_url = f"https://www.amazon.com/dp/{asin}"
     else:
@@ -155,6 +162,41 @@ def print_table(results: list):
   print("=" * 120 + "\n")
 
 
+def process_category(
+  category: ProductCategory,
+  top_n: int = 10,
+  output: str | None = None,
+  sqlite_file: str | None = None,
+) -> list[dict]:
+  """Fetch, parse, display, and save ranking data for a single category."""
+  url = category.url
+
+  results = parse_amazon_new_releases(url=url, top_n=top_n)
+  if not results:
+    logger.warning("No items found for category: %s", category.name)
+    return []
+
+  # Print table to console
+  print_table(results)
+
+  # Save to CSV
+  date_str = datetime.now(UTC).strftime("%Y%m%d")
+  output_file = output or f"amazon_top_releases_{category.name}_{date_str}.csv"
+  save_to_csv(results, output_file)
+
+  # Save to SQLite DB if specified
+  if sqlite_file:
+    collect_date = datetime.now(UTC).strftime("%Y/%m/%d")
+    upsert_rank_data(
+      db_path=sqlite_file,
+      category=category.name,
+      collect_date=collect_date,
+      items=results,
+    )
+
+  return results
+
+
 def main():
   parser = argparse.ArgumentParser(
     description="Scrape Amazon Hot New Releases Top N items."
@@ -163,8 +205,8 @@ def main():
     "--category",
     "-c",
     default="fashion",
-    choices=list(AmazonProductCategoryByName.keys()),
-    help="Amazon New Releases category (default: fashion)",
+    choices=list(AmazonProductCategoryByName.keys()) + ["all"],
+    help="Amazon New Releases category (default: fashion, or 'all' to process all categories)",
   )
   parser.add_argument(
     "--top-n",
@@ -201,30 +243,30 @@ def main():
     datefmt="%Y-%m-%d %H:%M:%S",
   )
 
-  category = AmazonProductCategoryByName[args.category]
-  url = category.url
-
-  results = parse_amazon_new_releases(url=url, top_n=args.top_n)
-  if not results:
-    logger.warning("No items found.")
-    return
-
-  # Print table to console
-  print_table(results)
-
-  # Save to CSV
-  date_str = datetime.now(UTC).strftime("%Y%m%d")
-  output_file = args.output or f"amazon_top_releases_{category.name}_{date_str}.csv"
-  save_to_csv(results, output_file)
-
-  # Save to SQLite DB if specified
-  if args.sqlite_file:
-    collect_date = datetime.now(UTC).strftime("%Y/%m/%d")
-    upsert_rank_data(
-      db_path=args.sqlite_file,
-      category=category.name,
-      collect_date=collect_date,
-      items=results,
+  if args.category == "all":
+    categories = list(AmazonProductCategories)
+    for category in tqdm(categories, desc="Scraping categories"):
+      cat_output = None
+      if args.output:
+        p = Path(args.output)
+        cat_output = (
+          str(p.with_stem(f"{p.stem}_{category.name}"))
+          if p.suffix
+          else f"{args.output}_{category.name}.csv"
+        )
+      process_category(
+        category=category,
+        top_n=args.top_n,
+        output=cat_output,
+        sqlite_file=args.sqlite_file,
+      )
+  else:
+    category = AmazonProductCategoryByName[args.category]
+    process_category(
+      category=category,
+      top_n=args.top_n,
+      output=args.output,
+      sqlite_file=args.sqlite_file,
     )
 
 

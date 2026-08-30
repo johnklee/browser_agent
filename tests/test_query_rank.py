@@ -6,11 +6,19 @@ from pathlib import Path
 
 SCRIPT_PATH = (
   Path(__file__).resolve().parent.parent
-  / ".agents"
+  / ".agent"
   / "skills"
   / "query_rank_info"
   / "query_rank.py"
 )
+if not SCRIPT_PATH.exists():
+  SCRIPT_PATH = (
+    Path(__file__).resolve().parent.parent
+    / ".agents"
+    / "skills"
+    / "query_rank_info"
+    / "query_rank.py"
+  )
 
 
 def test_query_rank_cli(tmp_path):

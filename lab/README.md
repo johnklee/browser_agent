@@ -42,6 +42,7 @@ Category mappings are defined in [`constants.py`](constants.py):
 | `coins` | `https://www.amazon.com/gp/new-releases/coins/` |
 | `kitchen` | `https://www.amazon.com/gp/new-releases/kitchen/` |
 | `lawn-garden` | `https://www.amazon.com/gp/new-releases/lawn-garden/` |
+| `all` | Process all supported product categories with a `tqdm` progress bar |
 
 ---
 
@@ -49,7 +50,7 @@ Category mappings are defined in [`constants.py`](constants.py):
 
 | Argument | Short Flag | Type | Default | Description |
 |---|---|---|---|---|
-| `--category` | `-c` | `str` | `fashion` | Amazon Hot New Releases category (`fashion`, `coins`, `kitchen`, `lawn-garden`). |
+| `--category` | `-c` | `str` | `fashion` | Amazon Hot New Releases category (`fashion`, `coins`, `kitchen`, `lawn-garden`, or `all`). |
 | `--top-n` | `-n` | `int` | `10` | Number of top items to collect. |
 | `--output` | `-o` | `str` | `None` | Custom output CSV file path. Defaults to `amazon_top_releases_{category}_{YYYYMMDD}.csv`. |
 | `--sqlite-file` | `-s` | `str` | `None` | Path to SQLite DB file to persist ranking data (e.g. `database/rank.db`). |
@@ -104,6 +105,13 @@ Show detailed HTTP request and parsing logs:
 
 ```bash
 python parse_amazon_top_n.py -c lawn-garden --log-level DEBUG
+```
+
+### 6. Process All Categories
+Fetch top items from all supported categories and show a progress bar with `tqdm`:
+
+```bash
+python parse_amazon_top_n.py --category all
 ```
 
 ---
